@@ -11,7 +11,41 @@ from api.common import WebException, InternalException
 from api.annotations import log_action
 from voluptuous import Required, Length, Schema
 
+from sqlalchemy import Column, DateTime, String, Integer, Boolean, ForeignKey
+from sqlalchemy.orm import relationship, backref
+
 _check_email_format = lambda email: re.match(r"[A-Za-z0-9\._%+-]+@[A-Za-z0-9\.-]+\.[A-Za-z]{2,4}", email) is not None
+
+class User(api.setup.Base):
+    __tablename__ = 'user'
+
+    uid = Column(String(50), primary_key=True)
+    username = Column(String(50), unique=True)
+    password_hash = Column(String(42))
+
+    disabled = Column(Boolean())
+    receive_ctf_emails = Column(Boolean())
+
+    background = Column(String(50))
+    firstname = Column(String(50))
+    lastname = Column(String(50))
+    country = Column(String(50))
+    email = Column(String(50))
+
+    teacher = Column(Boolean())
+    admin = Column(Boolean())
+
+    tid = Column(Integer, ForeignKey('team.tid'))
+    team = relationship('Team', backref=backref('members', lazy='dynamic',
+                                        cascade='delete,all', uselist=True))
+
+    def __init__(self, **kwargs):
+        super(User, self).__init__(**kwargs)
+        self.disabled = False
+        self.receive_ctf_emails = False
+
+    def __repr__(self):
+        return '<User %r>' % self.username
 
 user_schema = Schema({
     Required('email'): check(
@@ -145,12 +179,13 @@ def get_user(name=None, uid=None):
 
     return user
 
-def create_user(username, firstname, lastname, email, password_hash, tid, teacher=False,
+def create_user(session, username, firstname, lastname, email, password_hash, tid, teacher=False,
                 background="undefined", country="undefined", receive_ctf_emails=False):
     """
     This inserts a user directly into the database. It assumes all data is valid.
 
     Args:
+        session: sqlalchemy session
         username: user's username
         firstname: user's first name
         lastname: user's last name
@@ -190,6 +225,10 @@ def create_user(username, firstname, lastname, email, password_hash, tid, teache
         'country': country,
         'receive_ctf_emails': receive_ctf_emails
     }
+
+    #orm rewrite
+    new_user = User(**user)
+    session.add(new_user)
 
     db.users.insert(user)
 
@@ -264,6 +303,8 @@ def create_user_request(params):
 
     """
 
+    session = api.common.session()
+
     validate(user_schema, params)
 
     if api.config.enable_captcha and not _validate_captcha(params):
@@ -282,7 +323,7 @@ def create_user_request(params):
             "team_name": "TEACHER-" + api.common.token()
         })
 
-        return create_user(
+        return create_user(session,
             params["username"],
             params["firstname"],
             params["lastname"],
@@ -314,7 +355,7 @@ def create_user_request(params):
             "eligible": eligible
         }
 
-        tid = api.team.create_team(team_params)
+        tid = api.team.create_team(session, team_params)
 
         if tid is None:
             raise InternalException("Failed to create new team")
@@ -329,7 +370,7 @@ def create_user_request(params):
             raise WebException("Your team passphrase is incorrect.")
 
     # Create new user
-    uid = create_user(
+    uid = create_user(session,
         params["username"],
         params["firstname"],
         params["lastname"],
@@ -343,6 +384,9 @@ def create_user_request(params):
 
     if uid is None:
         raise InternalException("There was an error during registration.")
+
+    #orm rewrite
+    session.commit()
 
     api.team.determine_eligibility(tid=team['tid'])
     return uid
