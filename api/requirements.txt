@@ -7,3 +7,4 @@ voluptuous==0.8.5
 gunicorn
 spur==0.3.11
 line_profiler
+SQLAlchemy
