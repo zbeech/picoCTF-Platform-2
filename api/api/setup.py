@@ -4,6 +4,12 @@ Setup for the API
 
 import api
 
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
+
+Base = declarative_base()
+
 log = api.logger.use(__name__)
 
 def index_mongo():
@@ -28,3 +34,13 @@ def index_mongo():
     db.cache.ensure_index("expireAt", expireAfterSeconds=0)
     db.cache.ensure_index("kwargs", name="kwargs")
     db.cache.ensure_index("args", name="args")
+
+def create_session():
+    """
+    Create SQLAlchemy session for db.
+    """
+
+    engine = create_engine(api.config.alchemy_db_uri)
+    api.common.session = sessionmaker()
+    api.common.session.configure(bind=engine)
+    Base.metadata.create_all(engine)

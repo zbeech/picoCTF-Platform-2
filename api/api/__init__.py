@@ -23,3 +23,4 @@ import api.problem_feedback
 import api.config
 
 api.setup.index_mongo()
+api.setup.create_session()

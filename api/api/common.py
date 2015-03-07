@@ -20,6 +20,8 @@ mongo_addr = "127.0.0.1"
 mongo_port = 27017
 mongo_db_name = ""
 
+session = None
+
 external_client = None
 
 def get_conn():
@@ -51,10 +53,10 @@ def esc(s):
     Escapes a string to prevent html injection
 
     Returns a string with special HTML characters replaced.
-    Used to sanitize output to prevent XSS. We looked at 
-    alternatives but there wasn't anything of an appropriate 
-    scope that we could find. In the long-term this should be 
-    replaced with a proper sanitization function written by 
+    Used to sanitize output to prevent XSS. We looked at
+    alternatives but there wasn't anything of an appropriate
+    scope that we could find. In the long-term this should be
+    replaced with a proper sanitization function written by
     someone else."""
     return s\
         .replace('&', '&amp;')\

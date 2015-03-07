@@ -23,6 +23,10 @@ api.app.secret_key = "5XVbne3AjPH35eEH8yQI"
 api.common.allowed_protocols = ["https", "http"]
 api.common.allowed_ports = [8080]
 
+""" DATABASE """
+
+alchemy_db_uri = "sqlite:////home/vagrant/api/db.sqlite"
+
 """ MONGO """
 
 api.common.mongo_db_name = "pico"
