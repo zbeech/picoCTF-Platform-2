@@ -42,7 +42,6 @@ class User(api.setup.Base):
     def __init__(self, **kwargs):
         super(User, self).__init__(**kwargs)
         self.disabled = False
-        self.receive_ctf_emails = False
 
     def __repr__(self):
         return '<User %r>' % self.username
