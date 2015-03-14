@@ -181,7 +181,7 @@ def check(*callback_tuples):
                     result = callback(value)
                     if not result and type(result) == bool:
                         raise Invalid()
-                except Exception:
+                except APIException:
                     raise WebException(msg)
         return value
     return v
