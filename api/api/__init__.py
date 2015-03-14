@@ -5,9 +5,12 @@ Imports and setup functionality
 import api.logger
 import api.setup
 import api.achievement
+
+import api.models
 import api.user
 import api.team
 import api.group
+
 import api.annotations
 import api.auth
 import api.common

@@ -11,40 +11,7 @@ from api.common import WebException, InternalException
 from api.annotations import log_action
 from voluptuous import Required, Length, Schema
 
-from sqlalchemy import Column, DateTime, String, Integer, Boolean, ForeignKey
-from sqlalchemy.orm import relationship, backref
-
 _check_email_format = lambda email: re.match(r"[A-Za-z0-9\._%+-]+@[A-Za-z0-9\.-]+\.[A-Za-z]{2,4}", email) is not None
-
-class User(api.setup.Base):
-    __tablename__ = 'user'
-
-    uid = Column(String(50), primary_key=True)
-    username = Column(String(50), unique=True)
-    password_hash = Column(String(42))
-
-    disabled = Column(Boolean())
-    receive_ctf_emails = Column(Boolean())
-
-    background = Column(String(50))
-    firstname = Column(String(50))
-    lastname = Column(String(50))
-    country = Column(String(50))
-    email = Column(String(50))
-
-    teacher = Column(Boolean())
-    admin = Column(Boolean())
-
-    tid = Column(Integer, ForeignKey('team.tid'))
-    team = relationship('Team', backref=backref('members', lazy='dynamic',
-                                        cascade='delete,all', uselist=True))
-
-    def __init__(self, **kwargs):
-        super(User, self).__init__(**kwargs)
-        self.disabled = False
-
-    def __repr__(self):
-        return '<User %r>' % self.username
 
 user_schema = Schema({
     Required('email'): check(

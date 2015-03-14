@@ -6,9 +6,7 @@ import api
 
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-
-Base = declarative_base()
+from api.models import Base
 
 log = api.logger.use(__name__)
 

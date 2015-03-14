@@ -6,28 +6,9 @@ import api
 
 from api.common import safe_fail, WebException, InternalException, SevereInternalException
 
-from sqlalchemy import Column, DateTime, String, Integer, Boolean, ForeignKey
-from sqlalchemy.orm import relationship, backref
+
 
 max_team_users = 5
-
-class Team(api.setup.Base):
-    __tablename__ = 'team'
-
-    tid = Column(String(50), primary_key=True)
-    team_name = Column(String(50), unique=True)
-
-    adviser_email = Column(String(50))
-    adviser_name = Column(String(50))
-
-    password = Column(String(50))
-    school = Column(String(42))
-
-    size = Column(Integer())
-    eligible = Column(Boolean())
-
-    def __repr__(self):
-        return '<Team %r>' % self.team_name
 
 def get_team(tid=None, name=None):
     """
