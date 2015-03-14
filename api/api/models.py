@@ -39,7 +39,7 @@ class Team(Base):
     members = relationship("Competitor", backref="team", single_parent=True)
 
     def __repr__(self):
-        return '<Team %r>' % self.team_name
+        return '<Team %r>' % self.name
 
 class User(Base):
     __tablename__ = 'user'
