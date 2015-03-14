@@ -4,11 +4,16 @@ Contains the SQLAlchemy models for the API
 
 import api
 
-from sqlalchemy import Column, DateTime, String, Integer, Boolean, ForeignKey
+from sqlalchemy import Table, Column, DateTime
+from sqlalchemy import String, Integer, Boolean, ForeignKey
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.ext.declarative import declarative_base
 
 Base = declarative_base()
+
+group_team_table = Table("group_team_table", Base.metadata,
+                         Column("gid", String, ForeignKey("group.gid")),
+                         Column("tid", String, ForeignKey("team.tid")))
 
 class Group(Base):
     __tablename__ = 'group'
@@ -16,7 +21,8 @@ class Group(Base):
     gid = Column(String(50), primary_key=True)
     name = Column(String(50))
 
-    members = relationship("Competitor", backref="groups")
+    owner = Column(String, ForeignKey('teacher.uid'))
+    members = relationship("Team", secondary=group_team_table, backref="groups")
 
 class Team(Base):
     __tablename__ = 'team'
@@ -67,8 +73,7 @@ class User(Base):
 class Teacher(User):
     __tablename__ = 'teacher'
 
-    uid = Column(Integer, ForeignKey('user.uid'), primary_key=True)
-    groups = relationship("Group", backref="owner")
+    uid = Column(String, ForeignKey('user.uid'), primary_key=True)
 
     __mapper_args__ = {
         'polymorphic_identity': 'user',
@@ -84,7 +89,8 @@ class Teacher(User):
 class Competitor(User):
     __tablename__ = 'competitor'
 
-    uid = Column(Integer, ForeignKey('user.uid'), primary_key=True)
+    uid = Column(String, ForeignKey('user.uid'), primary_key=True)
+    tid = Column(String, ForeignKey("team.tid"))
 
     __mapper_args__ = {
         'polymorphic_identity': 'user',
