@@ -11,6 +11,9 @@ from api.common import WebException, InternalException
 from api.annotations import log_action
 from voluptuous import Required, Length, Schema
 
+from sqlalchemy import or_
+from api.models import Competitor, User, Team
+
 _check_email_format = lambda email: re.match(r"[A-Za-z0-9\._%+-]+@[A-Za-z0-9\.-]+\.[A-Za-z]{2,4}", email) is not None
 
 user_schema = Schema({
@@ -70,6 +73,8 @@ existing_team_schema = Schema({
         ("There is no existing team named that.", [
             lambda name: api.team.get_team(name=name) != None]),
         ("There are too many members on that team for you to join.", [
+            #orm rewrite: potentially an issue as create_user and this are using
+            #two different sessions.
             lambda name: len(api.team.get_team_uids(name=name, show_disabled=False)) < api.team.max_team_users
         ])
     ),
@@ -105,7 +110,7 @@ def get_team(uid=None):
     """
 
     user = get_user(uid=uid)
-    return api.team.get_team(tid=user["tid"])
+    return user.team
 
 def get_user(name=None, uid=None):
     """
@@ -119,78 +124,59 @@ def get_user(name=None, uid=None):
         Returns the corresponding user object or None if it could not be found
     """
 
-    db = api.common.get_conn()
+    session = api.common.session()
 
-    match = {}
+    clauses = []
 
     if uid is not None:
-        match.update({'uid': uid})
+        clauses.append(User.uid == uid)
     elif name is not None:
-        match.update({'username': name})
+        clauses.append(User.name == name)
     elif api.auth.is_logged_in():
-        match.update({'uid': api.auth.get_uid()})
+        caluses.append(User.uid == api.auth.get_uid())
     else:
         raise InternalException("Uid or name must be specified for get_user")
 
-    user = db.users.find_one(match)
+    user = session.query(User).filter(or_(*clauses)).first()
 
     if user is None:
         raise InternalException("User does not exist")
 
     return user
 
-def create_user(session, username, firstname, lastname, email, password_hash, tid, teacher=False,
-                background="undefined", country="undefined", receive_ctf_emails=False):
+def create_user(session, tid, params):
     """
     This inserts a user directly into the database. It assumes all data is valid.
 
     Args:
         session: sqlalchemy session
-        username: user's username
-        firstname: user's first name
-        lastname: user's last name
-        email: user's email
-        password_hash: a hash of the user's password
         tid: the team id to join
-        teacher: whether this account is a teacher
+        params:
+            name: user's username
+            firstname: user's first name
+            lastname: user's last name
+            email: user's email
+            password_hash: a hash of the user's password
     Returns:
         Returns the uid of the newly created user
     """
 
-    db = api.common.get_conn()
     uid = api.common.token()
 
-    if safe_fail(get_user, name=username) is not None:
+    if safe_fail(get_user, name=params["name"]) is not None:
         raise InternalException("User already exists!")
 
-    updated_team = db.teams.find_and_modify(
-        query={"tid": tid, "size": {"$lt": api.team.max_team_users}},
-        update={"$inc": {"size": 1}},
-        new=True)
+    team = session.query(Team).get(tid)
 
-    if not updated_team:
+    if team.members.count() >= api.team.max_team_users:
         raise InternalException("There are too many users on this team!")
 
-    user = {
-        'uid': uid,
-        'firstname': firstname,
-        'lastname': lastname,
-        'username': username,
-        'email': email,
-        'password_hash': password_hash,
-        'tid': tid,
-        'teacher': teacher,
-        'disabled': False,
-        'background': background,
-        'country': country,
-        'receive_ctf_emails': receive_ctf_emails
-    }
+    user = params.copy()
+    user["uid"] = uid
+    user["tid"] = tid
 
-    #orm rewrite
-    new_user = User(**user)
+    new_user = Competitor(**user)
     session.add(new_user)
-
-    db.users.insert(user)
 
     return uid
 
@@ -268,44 +254,18 @@ def create_user_request(params):
     if api.config.enable_captcha and not _validate_captcha(params):
         raise WebException("Incorrect captcha!")
 
-    #Why are these strings? :o
-    if params.get("create-new-teacher", "false") == "true":
-        if not api.config.enable_teachers:
-            raise WebException("Could not create account")
 
-        validate(teacher_schema, params)
-
-        tid = api.team.create_team({
-            "eligible": False,
-            "school": params["teacher-school"],
-            "team_name": "TEACHER-" + api.common.token()
-        })
-
-        return create_user(session,
-            params["username"],
-            params["firstname"],
-            params["lastname"],
-            params["email"],
-            hash_password(params["password"]),
-            tid,
-            teacher=True,
-            background=params["background"],
-            country=params["country"],
-            receive_ctf_emails=params["ctf-emails"]
-        )
-
-    elif params.get("create-new-team", "false") == "true":
-
-        # This can be customized.
-        eligible = True
-
+    # This can be customized.
+    eligible = True
+    info = {}
+    if params.get("create-new-team", "false") == "true":
         if eligible:
             validate(new_eligible_team_schema, params)
         else:
             validate(new_team_schema, params)
 
         team_params = {
-            "team_name": params["team-name-new"],
+            "name": params["team-name-new"],
             "school": params["team-school-new"],
             "password": params["team-password-new"],
             "eligible": eligible
@@ -315,36 +275,31 @@ def create_user_request(params):
 
         if tid is None:
             raise InternalException("Failed to create new team")
-        team = api.team.get_team(tid=tid)
-
+        info["tid"] = tid
     else:
         validate(existing_team_schema, params)
 
         team = api.team.get_team(name=params["team-name-existing"])
+        info["tid"] = team.tid
 
         if team['password'] != params['team-password-existing']:
             raise WebException("Your team passphrase is incorrect.")
 
     # Create new user
-    uid = create_user(session,
-        params["username"],
-        params["firstname"],
-        params["lastname"],
-        params["email"],
-        hash_password(params["password"]),
-        team["tid"],
-        background=params["background"],
-        country=params["country"],
-        receive_ctf_emails=params["ctf-emails"]
-    )
+    uid = create_user(session, info["tid"], {
+        "name": params["username"],
+        "firstname": params["firstname"],
+        "lastname": params["lastname"],
+        "email": params["email"],
+        "password_hash": hash_password(params["password"])})
 
     if uid is None:
         raise InternalException("There was an error during registration.")
 
     #orm rewrite
     session.commit()
+    #api.team.determine_eligibility(tid=tid)
 
-    api.team.determine_eligibility(tid=team['tid'])
     return uid
 
 def is_teacher(uid=None):
