@@ -5,8 +5,9 @@ API functions relating to team management.
 import api
 
 from api.common import safe_fail, WebException, InternalException, SevereInternalException
+from api.models import Team
 
-
+from sqlalchemy import or_
 
 max_team_users = 5
 
@@ -21,25 +22,28 @@ def get_team(tid=None, name=None):
         Returns the corresponding team object or None if it could not be found
     """
 
-    db = api.api.common.get_conn()
+    session = api.common.session()
 
-    match = {}
+    clauses = []
     if tid is not None:
-        match.update({'tid': tid})
+        clauses.append(Team.tid == tid)
     elif name is not None:
-        match.update({'team_name': name})
+        clauses.append(Team.name == name)
     elif api.auth.is_logged_in():
-        match.update({"tid": api.user.get_user()["tid"]})
+        # Determine tid for the logged in user and call again.
+        return api.user.get_user().team
     else:
         raise InternalException("Must supply tid or team name to get_team")
 
-    team = db.teams.find_one(match, {"_id": 0})
+    team = session.query(Team).filter(or_(*clauses)).first()
 
     if team is None:
         raise InternalException("Team does not exist.")
 
     return team
 
+#orm rewrite: Needs reworking. get_groups shouldn't be doing additional calculations.
+#Should be called something else.
 def get_groups(tid=None, uid=None):
     """
     Get the group membership for a team.
@@ -88,8 +92,6 @@ def create_team(session, params):
         The newly created team id.
     """
 
-    db = api.common.get_conn()
-
     if not shell_accounts_available() and api.config.enable_shell:
         raise SevereInternalException("There are no shell accounts available.")
 
@@ -100,10 +102,9 @@ def create_team(session, params):
     team = Team(**params)
     session.add(team)
 
-    db.teams.insert(params)
-
-    if api.config.enable_shell:
-        assign_shell_account(params["tid"])
+    #orm rewrite
+    #if api.config.enable_shell:
+    #    assign_shell_account(params["tid"])
 
     return params['tid']
 
@@ -120,10 +121,9 @@ def get_team_members(tid=None, name=None, show_disabled=True):
 
     db = api.common.get_conn()
 
-    tid = get_team(name=name, tid=tid)["tid"]
-
-    users = list(db.users.find({"tid": tid}, {"_id": 0, "uid": 1, "username": 1, "disabled": 1}))
-    return [user for user in users if show_disabled or not user.get("disabled", False)]
+    team = get_team(name=name, tid=tid)
+    return list(team.members.filter(
+        or_(show_disabled == True, Competitor.disabled == False)))
 
 def get_team_uids(tid=None, name=None, show_disabled=True):
     """
@@ -135,8 +135,8 @@ def get_team_uids(tid=None, name=None, show_disabled=True):
     Returns:
         A list of uids
     """
-
-    return [user['uid'] for user in get_team_members(tid=tid, name=name, show_disabled=show_disabled)]
+    members = get_team_members(tid=tid, name=name, show_disabled=show_disabled)
+    return [member.uid for member in members]
 
 def get_team_information(tid=None):
     """
@@ -150,13 +150,11 @@ def get_team_information(tid=None):
             members
     """
 
-    team_info = get_team(tid=tid)
+    team = get_team(tid=tid)
 
-    if tid is None:
-        tid = team_info["tid"]
-
-    team_info["score"] = api.stats.get_score(tid=tid)
-    team_info["members"] = [member["username"] for member in get_team_members(tid=tid, show_disabled=False)]
+    team_info = {}
+    #team_info["score"] = api.stats.get_score(tid=tid)
+    team_info["members"] = [member.name for member in get_team_members(tid=tid, show_disabled=False)]
     team_info["competition_active"] = api.utilities.check_competition_active()
     team_info["max_team_size"] = max_team_users
 
@@ -173,13 +171,11 @@ def get_all_teams(show_ineligible=False):
         A list of all of the teams.
     """
 
-    match = {}
+    session = api.common.session()
+    teams = session.query(Team).filter(
+        or_(show_ineligible == True, Team.eligible == True))
 
-    if not show_ineligible:
-        match.update({"eligible": True})
-
-    db = api.common.get_conn()
-    return list(db.teams.find(match, {"_id": 0}))
+    return list(teams)
 
 def shell_accounts_available():
     """
