@@ -19,7 +19,7 @@ class Group(Base):
     __tablename__ = 'group'
 
     gid = Column(String(50), primary_key=True)
-    name = Column(String(50))
+    name = Column(String(50), unique=True)
 
     owner = Column(String, ForeignKey('teacher.uid'))
     members = relationship("Team", secondary=group_team_table, backref="groups")
@@ -33,11 +33,10 @@ class Team(Base):
     password = Column(String(50))
     school = Column(String(42))
 
-    size = Column(Integer())
     eligible = Column(Boolean())
 
-    members = relationship("Competitor", backref="team", single_parent=True)
-
+    members = relationship("Competitor", backref="team",
+                           lazy="dynamic", single_parent=True)
     def __repr__(self):
         return '<Team %r>' % self.name
 
@@ -76,12 +75,12 @@ class Teacher(User):
     uid = Column(String, ForeignKey('user.uid'), primary_key=True)
 
     __mapper_args__ = {
-        'polymorphic_identity': 'user',
+        'polymorphic_identity': __tablename__
     }
 
     def __init__(self, **kwargs):
         super(Teacher, self).__init__(**kwargs)
-        self.role = self.__class__.__name__
+        self.role = self.__tablename__
 
     def __repr__(self):
         return '<Teacher %r>' % self.name
@@ -93,12 +92,12 @@ class Competitor(User):
     tid = Column(String, ForeignKey("team.tid"))
 
     __mapper_args__ = {
-        'polymorphic_identity': 'user',
+        'polymorphic_identity': __tablename__,
     }
 
     def __init__(self, **kwargs):
         super(Competitor, self).__init__(**kwargs)
-        self.role = self.__class__.__name__
+        self.role = self.__tablename__
 
     def __repr__(self):
         return '<Competitor %r>' % self.name
