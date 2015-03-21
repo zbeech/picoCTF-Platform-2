@@ -177,11 +177,8 @@ def check(*callback_tuples):
 
         for msg, callbacks in callback_tuples:
             for callback in callbacks:
-                try:
-                    result = callback(value)
-                    if not result and type(result) == bool:
-                        raise Invalid()
-                except APIException:
+                result = callback(value)
+                if not result and type(result) == bool:
                     raise WebException(msg)
         return value
     return v
@@ -201,7 +198,7 @@ def validate(schema, data):
     try:
         schema(data)
     except MultipleInvalid as error:
-        raise APIException(0, None, error.msg)
+        raise APIException(error.msg)
 
 def safe_fail(f, *args, **kwargs):
     """
