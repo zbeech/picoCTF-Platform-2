@@ -12,7 +12,7 @@ from api.annotations import log_action
 from voluptuous import Required, Length, Schema
 
 from sqlalchemy import or_
-from api.models import Competitor, User, Team
+from api.models import Competitor, User, Team, Teacher
 
 _check_email_format = lambda email: re.match(r"[A-Za-z0-9\._%+-]+@[A-Za-z0-9\.-]+\.[A-Za-z]{2,4}", email) is not None
 
@@ -133,7 +133,7 @@ def get_user(name=None, uid=None):
     elif name is not None:
         clauses.append(User.name == name)
     elif api.auth.is_logged_in():
-        caluses.append(User.uid == api.auth.get_uid())
+        clauses.append(User.uid == api.auth.get_uid())
     else:
         raise InternalException("Uid or name must be specified for get_user")
 
@@ -203,7 +203,7 @@ def get_all_users(show_teachers=False):
 
 def _validate_captcha(data):
     """
-    Validates a captcha with google's reCAPTCHA.
+    Validates a acptcha with google's reCAPTCHA.
 
     Args:
         data: the posted form data
@@ -254,9 +254,9 @@ def create_user_request(params):
     if api.config.enable_captcha and not _validate_captcha(params):
         raise WebException("Incorrect captcha!")
 
-
     # This can be customized.
     eligible = True
+
     info = {}
     if params.get("create-new-team", "false") == "true":
         if eligible:
@@ -313,7 +313,7 @@ def is_teacher(uid=None):
     """
 
     user = get_user(uid=uid)
-    return user.get('teacher', False)
+    return isinstance(user, Teacher)
 
 def set_password_reset_token(uid, token):
     """
