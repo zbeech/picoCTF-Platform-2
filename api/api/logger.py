@@ -227,11 +227,11 @@ def get_request_information():
             groups = api.team.get_groups()
 
             information["user"] = {
-                "username": user["username"],
-                "email": user["email"],
-                "team_name": team["team_name"],
-                "school": team["school"],
-                "groups": [group["name"] for group in groups]
+                "username": user.name,
+                "email": user.email,
+                "team_name": team.name,
+                "school": team.school,
+                "groups": [group.name for group in groups]
             }
 
     return information
