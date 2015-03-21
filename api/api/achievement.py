@@ -216,6 +216,9 @@ def get_earned_achievements(tid=None, uid=None):
         List of solved achievement dictionaries
     """
 
+    if tid is None:
+        tid = api.team.get_team().tid
+
     achievements = get_earned_achievement_instances(tid=tid, uid=uid)
     set_earned_achievements_seen(tid=tid, uid=uid)
 
