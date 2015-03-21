@@ -134,11 +134,18 @@ class ExceptionHandler(logging.StreamHandler):
 
         information = get_request_information()
 
-        information.update({
+        exception = {
             "event": "exception",
             "time": datetime.now(),
-            "trace": record.msg
-        })
+        }
+
+        #werkzeug errors need getMessage()
+        try:
+            exception["trace"] = record.getMessage()
+        except AtributeError:
+            exception["trace"] = record.msg
+
+        information.update(exception)
 
         api.common.get_conn().exceptions.insert(information)
 
