@@ -15,6 +15,7 @@ true
   config.vm.synced_folder "api", "/home/vagrant/api"
   config.vm.synced_folder "web", "/home/vagrant/web"
   config.vm.synced_folder "scripts", "/home/vagrant/scripts"
+  config.vm.synced_folder "config", "/home/vagrant/config"
   config.vm.provision :shell, :path => "scripts/vagrant_setup.sh"
   config.ssh.forward_agent = true
 

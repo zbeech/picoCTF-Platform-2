@@ -52,7 +52,7 @@ There are many other useful [Vagrant commands](http://docs.vagrantup.com/v2/cli/
 
 
 ###<a name="devenv-novagrant"></a>  What if I don't want to use Vagrant?
-You do not need to use either Vagrant or VirtualBox to run the picoCTF Platform. This is purely to ease development. You can always run the picoCTF Platform directly on Ubuntu 14.04 or a similar Linux distribution by running the `scripts/vagrant_setup.sh` directly on the target machine (as root). This is the recommended approach for setting up the picoCTF Platform on a production server.
+You do not need to use either Vagrant or VirtualBox to run the picoCTF Platform. This is purely to ease development. You can always run the picoCTF Platform directly on Ubuntu 14.04 or a similar Linux distribution by running the `scripts/non_vagrant_setup.sh` directly on the target machine (as root). This is the recommended approach for setting up the picoCTF Platform on a production server.
 
 
 ## <a name="starting"></a> Starting the picoCTF Platform ##

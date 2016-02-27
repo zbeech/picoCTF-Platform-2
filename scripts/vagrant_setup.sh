@@ -1,5 +1,7 @@
 #!/bin/bash
 
+PICOCTF_HOME=${PICOCTF_HOME:-'/home/vagrant/'}
+
 # Updates
 apt-get -y update
 apt-get -y upgrade
@@ -23,16 +25,16 @@ npm install -g coffee-script
 npm install -g react-tools
 npm install -g jsxhint
 
-pip3 install -r /home/vagrant/api/requirements.txt
+pip3 install -r ${PICOCTF_HOME}/api/requirements.txt
 
 # Jekyll
 gem install jekyll -v 2.5.3
 
 # Configure Environment
-echo 'PATH=$PATH:/home/vagrant/scripts' >> /etc/profile
+echo 'PATH=$PATH:${PICOCTF_HOME}/scripts' >> /etc/profile
 
 # Configure Nginx
-cp /vagrant/config/ctf.nginx /etc/nginx/sites-enabled/ctf
+cp ${PICOCTF_HOME}/config/ctf.nginx /etc/nginx/sites-enabled/ctf
 rm /etc/nginx/sites-enabled/default
 mkdir -p /srv/http/ctf
 service nginx restart
