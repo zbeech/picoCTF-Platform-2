@@ -31,7 +31,7 @@ pip3 install -r ${PICOCTF_HOME}/api/requirements.txt
 gem install jekyll -v 2.5.3
 
 # Configure Environment
-echo 'PATH=$PATH:${PICOCTF_HOME}/scripts' >> /etc/profile
+echo "PATH=\$PATH:${PICOCTF_HOME}/scripts" >> /etc/profile
 
 # Configure Nginx
 cp ${PICOCTF_HOME}/config/ctf.nginx /etc/nginx/sites-enabled/ctf
